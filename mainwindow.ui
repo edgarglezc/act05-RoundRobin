@@ -18,7 +18,7 @@
     <item row="0" column="0" colspan="2">
      <widget class="QGroupBox" name="groupBox">
       <property name="title">
-       <string>Actividad 5. Algoritmos de Planificación - First Come First Served (FCFS)</string>
+       <string>Actividad 5. Algoritmos de Planificación - Round Robin</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0">
@@ -60,6 +60,13 @@
            <widget class="QPushButton" name="pb_process">
             <property name="text">
              <string>Agregar proceso</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="lb_msg">
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>
@@ -195,8 +202,18 @@
          <property name="frameShadow">
           <enum>QFrame::Raised</enum>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayout">
-          <item>
+         <layout class="QFormLayout" name="formLayout_2">
+          <item row="0" column="0">
+           <widget class="QLabel" name="lb_quantum">
+            <property name="text">
+             <string>Quantum</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="sb_quantum"/>
+          </item>
+          <item row="2" column="0" colspan="2">
            <widget class="QLabel" name="lb_globalCounter">
             <property name="text">
              <string>Contador global:</string>
@@ -206,8 +223,31 @@
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QLCDNumber" name="lcd_counterTime"/>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLCDNumber" name="lcd_counterTime">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>100</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>200</height>
+             </size>
+            </property>
+            <property name="segmentStyle">
+             <enum>QLCDNumber::Flat</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QPushButton" name="pushButton">
+            <property name="text">
+             <string>Guardar Quantum</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </widget>
@@ -223,7 +263,7 @@
      <x>0</x>
      <y>0</y>
      <width>1035</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
   </widget>

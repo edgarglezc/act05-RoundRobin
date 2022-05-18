@@ -30,6 +30,8 @@ private slots:
 
     void on_pb_end_clicked();
 
+    void on_pushButton_clicked();
+
 private:
     Ui::MainWindow *ui;
 
@@ -50,6 +52,10 @@ private:
 
     // Contador del tiempo global
     int counterTime;
+
+    // Variables para almacenar el quantum
+    int quantum;
+    int currentQuantum;
 
     // ----------------------------------------
 

@@ -12,21 +12,27 @@ MainWindow::MainWindow(QWidget *parent)
     , pausedFlag(false)
     , idCounter(1)
     , counterTime(0)
+    , quantum(10)
+    , currentQuantum(10)
     , actualProcessThread(&MainWindow::updateActualProcess, this)
     , executeProcessThread(&MainWindow::executeActualProcess, this)
     , executeGlobalCounterThread(&MainWindow::executeGlobalCounter, this)
 {
     ui->setupUi(this);
-    setWindowTitle("FCFS");
+    setWindowTitle("Round Robin");
 
     // Configuración inicial del frame Proceso Actual
     ui->pb_continue->setEnabled(false);
     ui->pb_pause->setEnabled(false);
     ui->pb_end->setEnabled(false);
 
+    // Deshabilitamos el botón de agregar proceso hasta que haya datos válidos
     ui->pb_process->setEnabled((false));
     ui->sb_processBurstTime->setMinimum(1);
     ui->sb_processBurstTime->clear();
+
+    // Cambiar el valor del spinbox del quantum
+    ui->sb_quantum->setValue(this->quantum);
 
     // Editar el encabezado de la tabla de la cola de procesos
     QStringList processesTitles;
@@ -266,3 +272,13 @@ void MainWindow::on_pb_end_clicked() {
     updateEndedProcessTable();
 }
 
+
+void MainWindow::on_pushButton_clicked() {
+    this->quantum = ui->sb_quantum->value();
+    this->currentQuantum = this->quantum;
+
+    QMessageBox msg;
+    QString message = "Se han guardado cambios. \n Valor del Quantum: " + QString::number(this->quantum);
+    msg.setText(message);
+    msg.exec();
+}
