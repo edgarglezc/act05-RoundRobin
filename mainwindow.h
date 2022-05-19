@@ -37,15 +37,13 @@ private:
 
     // Colas para almacenar los procesos
     std::vector<Process> processes;
-    std::vector<Process> endedProcesses;
+    std::vector<Process> endedProcesses;    
 
-    // Atributo para tener el proceso actual en ejecución
-    Process actualProcess;
+    // Variable para saber cual es el proceso actual
+    size_t index;
 
-    // Banderas para saber si hay un proceso en ejecución
-    // o si el proceso en ejecución ha sido pausado
-    bool processFlag;
-    bool pausedFlag;
+    // Bandera para saber si el proceso en ejecución ha sido pausado
+    bool pausedFlag;    
 
     // Contador de ID's para los procesos que se agregan al programa
     int idCounter;
@@ -59,21 +57,20 @@ private:
 
     // ----------------------------------------
 
-    // Hilos necesarios para ejecutar el programa
-    std::thread actualProcessThread;
-    std::thread executeProcessThread;
+    // Hilos necesarios para ejecutar el programa    
+    std::thread executeRoundRobinThread;
     std::thread executeGlobalCounterThread;
 
     // Funciones de los hilos    
-    void executeActualProcess();
-    void updateActualProcess();
+    void executeRoundRobin();
     void executeGlobalCounter();
 
     // Funciones del programa
     void updateProcessTable();
     void updateEndedProcessTable();
-    void updateProcess();
-    void calculateFCFS();
+    void updateProcess(const Process&);
+    void clearProcessFrame();
+    void calculateRoundRobin(Process&);
 
 
     enum Column {
@@ -81,7 +78,7 @@ private:
     };
 
     enum State {
-        created, execution, paused, ended
+        created, execution, paused, ended, waiting
     };
 };
 

@@ -56,7 +56,7 @@ public:
     void setStateStr(const std::string &newStateStr);
 
     enum State {
-        created, execution, paused, ended
+        created, execution, paused, ended, waiting
     };
     int getBurstTime() const;
     void setBurstTime(int newBurstTime);

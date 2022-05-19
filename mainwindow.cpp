@@ -5,17 +5,16 @@
 #include <QDebug>
 #include <windows.h>
 
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-    , processFlag(false)
+    , ui(new Ui::MainWindow)    
     , pausedFlag(false)
     , idCounter(1)
     , counterTime(0)
     , quantum(10)
     , currentQuantum(10)
-    , actualProcessThread(&MainWindow::updateActualProcess, this)
-    , executeProcessThread(&MainWindow::executeActualProcess, this)
+    , executeRoundRobinThread(&MainWindow::executeRoundRobin, this)
     , executeGlobalCounterThread(&MainWindow::executeGlobalCounter, this)
 {
     ui->setupUi(this);
@@ -36,8 +35,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Editar el encabezado de la tabla de la cola de procesos
     QStringList processesTitles;
-    processesTitles << "ID" << "Nombre" << "Estado" << "Duración" << "Llegada";
-    ui->processTable->setColumnCount(5);
+    processesTitles << "ID" << "Nombre" << "Estado" << "Duración" << "Tiempo restante" << "Llegada";
+    ui->processTable->setColumnCount(6);
     ui->processTable->setHorizontalHeaderLabels(processesTitles);
 
     // Editar el encabezado de la tabla de proceso finalizados
@@ -47,10 +46,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->endedProcessTable->setHorizontalHeaderLabels(endedProcessesTitles);
 }
 
-MainWindow::~MainWindow()
-{
+
+MainWindow::~MainWindow() {
     delete ui;
 }
+
 
 void MainWindow::on_pb_process_clicked() {
     Process newProcess(
@@ -64,6 +64,9 @@ void MainWindow::on_pb_process_clicked() {
     // Agregar el proceso a la lista
     this->processes.push_back(newProcess);
     updateProcessTable();
+
+    ui->le_processName->clear();
+    ui->sb_processBurstTime->clear();
 }
 
 void MainWindow::updateProcessTable() {
@@ -74,6 +77,7 @@ void MainWindow::updateProcessTable() {
         QString newId = QString::number(newProcess.getId());
         QString newName = QString::fromStdString(newProcess.getName());
         QString newState = QString::fromStdString(newProcess.getStateStr());
+        QString newDuration = QString::number(newProcess.getTotalDuration());
         QString newBurstTime = QString::number(newProcess.getBurstTime());
         QString newArrivalTime = QString::number(newProcess.getArrivalTime());
 
@@ -84,70 +88,12 @@ void MainWindow::updateProcessTable() {
         ui->processTable->setItem(ui->processTable->rowCount()-1, id, new QTableWidgetItem(newId));
         ui->processTable->setItem(ui->processTable->rowCount()-1, name, new QTableWidgetItem(newName));
         ui->processTable->setItem(ui->processTable->rowCount()-1, state, new QTableWidgetItem(newState));
-        ui->processTable->setItem(ui->processTable->rowCount()-1, burstTime, new QTableWidgetItem(newBurstTime));
-        ui->processTable->setItem(ui->processTable->rowCount()-1, arrivalTime, new QTableWidgetItem(newArrivalTime));
-
-        // Limpiamos los campos del nuevo proceso
-        ui->le_processName->clear();
-        ui->sb_processBurstTime->clear();
+        ui->processTable->setItem(ui->processTable->rowCount()-1, state+1, new QTableWidgetItem(newDuration));
+        ui->processTable->setItem(ui->processTable->rowCount()-1, burstTime+1, new QTableWidgetItem(newBurstTime));
+        ui->processTable->setItem(ui->processTable->rowCount()-1, arrivalTime+1, new QTableWidgetItem(newArrivalTime));
     }
 }
 
-void MainWindow::executeActualProcess() {
-    while(1) {
-        if(this->processFlag == true) {
-            if(this->actualProcess.getBurstTime() > 0) {
-                if(!pausedFlag) {
-                    this->actualProcess.setBurstTime(this->actualProcess.getBurstTime()-1);
-                    ui->lb_actualDurationData->setText(QString::number(this->actualProcess.getBurstTime()));
-                    Sleep(1000);
-                }
-            }
-            else {
-                // Entra a este condicional cuando el tiempo del proceso
-                // en ejecución ya es 0, lo que significa que ya se
-                // ha terminado su ejecución
-                ui->lb_actualNameData->clear();
-                ui->lb_actualDurationData->clear();
-                ui->lb_actualStateData->clear();
-                this->processes.erase(this->processes.begin());
-                    // Parte del algoritmo FCFS
-                this->calculateFCFS();
-                    // ------------------------
-                this->endedProcesses.push_back(this->actualProcess);
-                updateEndedProcessTable();
-                updateProcessTable();
-                this->processFlag = false;
-            }
-        }
-    }
-}
-
-void MainWindow::updateActualProcess() {
-    while(1) {
-        if(this->processFlag == false && this->processes.size() > 0) {
-            this->actualProcess = this->processes.front();
-            this->actualProcess.setState(execution);
-            ui->lb_actualNameData->setText(QString::fromStdString(this->actualProcess.getName()));
-            ui->lb_actualStateData->setText(QString::fromStdString(this->actualProcess.getStateStr()));
-            ui->lb_actualDurationData->setText(QString::number(this->actualProcess.getBurstTime()));
-            ui->pb_pause->setEnabled(true);
-            ui->pb_end->setEnabled(true);
-
-                // Parte del algoritmo FCFS
-            // Waiting Time = StartTime - ArrivalTime
-            // Tiempo que esperó el proceso para ser ejecutado por el programa
-            int waitingTime = this->counterTime - this->actualProcess.getArrivalTime();
-            // Actualizamos el waitingTime del proceso
-            this->actualProcess.setWaitingTime(waitingTime);
-                // ------------------------
-
-            updateProcess();
-            updateProcessTable();
-            this->processFlag = true;
-        }
-    }
-}
 
 /**
  * @brief MainWindow::executeGlobalCounter
@@ -159,9 +105,10 @@ void MainWindow::updateActualProcess() {
 void MainWindow::executeGlobalCounter() {
     while(1) {
         Sleep(1000);
-        ui->lcd_counterTime->display(QString::number(this->counterTime++));
+        ui->lcd_counterTime->display(QString::number(this->counterTime++));        
     }
 }
+
 
 void MainWindow::updateEndedProcessTable() {
     Process lastProcess = this->endedProcesses.at(this->endedProcesses.size()-1);
@@ -192,27 +139,35 @@ void MainWindow::updateEndedProcessTable() {
 }
 
 
-void MainWindow::updateProcess() {
-    for(auto& process : this->processes) {
-        if(process.getId() == this->actualProcess.getId()) {
-                process.setState(this->actualProcess.getState());
-        }
-    }
+void MainWindow::updateProcess(const Process& p) {
+    ui->lb_actualIdData->setText(QString::number(p.getId()));
+    ui->lb_actualNameData->setText(QString::fromStdString(p.getName()));
+    ui->lb_actualDurationData->setText(QString::number(p.getBurstTime()));
+    ui->lcd_counterQuantum->display(QString::number(this->currentQuantum--));
+    ui->lb_actualStateData->setText(QString::fromStdString(p.getStateStr()));
 }
 
-void MainWindow::calculateFCFS() {
+void MainWindow::clearProcessFrame() {
+    ui->lb_actualIdData->clear();
+    ui->lb_actualNameData->clear();
+    ui->lb_actualDurationData->clear();
+    ui->lb_actualStateData->clear();
+}
+
+
+void MainWindow::calculateRoundRobin(Process& p) {
     // Estado Terminado
-    this->actualProcess.setState(ended);
+    p.setState(ended);
 
     // CompletionTime - Tiempo que terminó su ejecución
-    this->actualProcess.setCompletionTime(this->counterTime);
+    p.setCompletionTime(this->counterTime);
 
     // TurnAroundTime - Tiempo que tardó el proceso en ejecutarse
     // Puede no ser el mismo que el BurstTime debido a que se puede pausar su ejecución o finalizar
-    this->actualProcess.setTurnAroundTime(
-                (this->actualProcess.getCompletionTime() -
-                 this->actualProcess.getArrivalTime()) -
-                this->actualProcess.getWaitingTime());
+    p.setTurnAroundTime((p.getCompletionTime() - p.getArrivalTime()));
+
+    // WaitingTime - Tiempo que espero el proceso para ser ejecutado
+    p.setWaitingTime(p.getTurnAroundTime() - p.getTotalDuration());
 }
 
 
@@ -240,9 +195,9 @@ void MainWindow::on_pb_pause_clicked() {
     this->pausedFlag = !this->pausedFlag;
     ui->pb_pause->setEnabled(false);
     ui->pb_continue->setEnabled(true);
-    this->actualProcess.setState(paused);
-    ui->lb_actualStateData->setText(QString::fromStdString(this->actualProcess.getStateStr()));
-    updateProcess();
+    this->processes[index].setState(paused);
+    ui->lb_actualStateData->setText(QString::fromStdString(this->processes[index].getStateStr()));
+    updateProcess(this->processes[index]);
     updateProcessTable();
 }
 
@@ -251,9 +206,9 @@ void MainWindow::on_pb_continue_clicked() {
     this->pausedFlag = !this->pausedFlag;
     ui->pb_pause->setEnabled(true);
     ui->pb_continue->setEnabled(false);
-    this->actualProcess.setState(execution);
-    ui->lb_actualStateData->setText(QString::fromStdString(this->actualProcess.getStateStr()));
-    updateProcess();
+    this->processes[index].setState(execution);
+    ui->lb_actualStateData->setText(QString::fromStdString(this->processes[index].getStateStr()));
+    updateProcess(this->processes[index]);
     updateProcessTable();
 }
 
@@ -262,12 +217,11 @@ void MainWindow::on_pb_end_clicked() {
     ui->lb_actualNameData->clear();
     ui->lb_actualDurationData->clear();
     ui->lb_actualStateData->clear();
-    this->processes.erase(this->processes.begin());
-    this->processFlag = false;
+    this->processes.erase(this->processes.begin()+index);
         // Parte del algoritmo FCFS
-    this->calculateFCFS();
+    this->calculateRoundRobin(this->processes[index]);
         // -----------------------
-    this->endedProcesses.push_back(this->actualProcess);
+    this->endedProcesses.push_back(this->processes[index]);
     updateProcessTable();
     updateEndedProcessTable();
 }
@@ -281,4 +235,71 @@ void MainWindow::on_pushButton_clicked() {
     QString message = "Se han guardado cambios. \n Valor del Quantum: " + QString::number(this->quantum);
     msg.setText(message);
     msg.exec();
+}
+
+
+/**
+ * @brief MainWindow::executeRoundRobin
+ *
+ * Función para ejecutar el RoundRobin.
+ * Itera sobre la cola de procesos y le da a
+ * cada uno el tiempo que equivale el quantum.
+ *
+ * Cuando el quantum termina, este se reinicia y
+ * pasa al siguiente proceso en cola.
+ */
+void MainWindow::executeRoundRobin() {
+    while(1) {
+        // Iteramos sobre los procesos que haya en la cola
+        for(index = 0; index<this->processes.size(); index++) {
+
+            // Le asignamos el valor total del quantum al contador del quantum
+            this->currentQuantum = this->quantum;
+
+            // Ejecutaremos el proceso en turno mientras el quantum sea superior a 0
+            while(this->currentQuantum > 0) {
+
+                // Establecemos el estado del proceso a "ejecución"
+                this->processes[index].setState(execution);
+
+                // Actualizamos los valores del proceso y de la tabla
+                updateProcess(this->processes[index]);
+                updateProcessTable();
+
+                // Esperamos 1 segundo
+                Sleep(1000);
+
+                // Decrementamos el valor del Bursttime del proceso en 1
+                this->processes[index].setBurstTime(this->processes[index].getBurstTime()-1);
+
+                // Verificar si el proceso en turno ya terminó su ejecución
+                if(this->processes[index].getBurstTime() == 0) {
+                    updateProcess(this->processes[index]);
+                    calculateRoundRobin(this->processes[index]);
+
+                    // Agregamos el proceso a la lista de procesos terminados
+                    this->endedProcesses.push_back(this->processes[index]);
+
+                    // Eliminamos el proceso de la cola de procesos
+                    this->processes.erase(this->processes.begin()+index);
+
+                    // Actualizamos el contador del Quantum
+                    ui->lcd_counterQuantum->display(QString::number(this->quantum));
+
+                    // Limpiamos y actualizamos valores de la interfaz
+                    clearProcessFrame();
+                    updateProcessTable();
+                    updateEndedProcessTable();
+
+                    // Rompemos el ciclo ya que el proceso terminó su ejecución
+                    break;
+                }
+
+                // En caso de que se termine el Quantum y no se haya terminado el Bursttime
+                // Actualizamos el estado del proceso a "espera"
+                this->processes[index].setState(waiting);
+                updateProcessTable();
+            }
+        }
+    }
 }

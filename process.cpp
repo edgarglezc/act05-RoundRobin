@@ -146,6 +146,7 @@ void Process::setState(int newState) {
     case execution: this->setStateStr("En ejecución"); break;
     case paused: this->setStateStr("Pausado"); break;
     case ended: this->setStateStr("Finalizado"); break;
+    case waiting: this->setStateStr("En espera"); break;
     }
 }
 
